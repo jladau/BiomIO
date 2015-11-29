@@ -54,6 +54,47 @@ public class BiomIO {
 	/**Sparse matrix object.**/
 	private SparseMatrix spm1;
 	
+
+	/**
+	 * Constructor that performs specified initial operations on the BIOM table.
+	 * @param sBiomPath Absolute path to BIOM file.
+	 * @param mapOptions Selected options. Key value pairings can include:
+	 *                   <p>
+	 *                   <ul>
+	 *                   <li>sTaxonRank [string] = Taxonomic units on which to collapse table. Accepted values are "kingdom", "phylum", "class", "order", "family", "genus", "species", or "otu." The value of "otu" will cause table to not be modified.
+	 *                   <p>
+	 *                   <li>sSampleMetadataPath [string] = Path to text file containing sample metadata formatted according to http://biom-format.org/documentation/adding_metadata.html. For use if BIOM file does not contain metadata. Must include "id" field giving sample IDs.
+	 *                   <p>
+	 *                   <li>rgsSampleMetadataKeys [list of strings] = Sample metadata keys to load from metadata file. A comma-delimited list.
+	 *                   <p>
+	 *                   <li>sObservationMetadataPath [string] = Path to text file containing observation metadata formatted according to http://biom-format.org/documentation/adding_metadata.html. For use if BIOM file does not contain metadata. Must include "id" field giving observation IDs.
+	 *                   <p>
+	 *                   <li>rgsObservationMetadataKeys [array of strings] = Observations metadata keys to load from metadata file. A comma-delimited list.
+	 *                   <p>
+	 *                   <li>sSamplesToKeepPath [string] = Path to file with list of samples to keep. File should contain a list of sample names.
+	 *                   <p>
+	 *                   <li>sObservationsToKeepPath [string] = Path to file with list of observations to keep. File should contain a list of observation names.
+	 *                   <p>
+	 *                   <li>rgsRequiredObservationMetadata [array of strings] = Comma-delimited list of observation metadata keys. Samples lacking data for one or more of these keys will be omitted.
+	 *                   <p>
+	 *                   <li>rgsRequiredSampleMetadata [list of strings] = Comma-delimited list of sample metadata keys. Samples lacking data for one or more of these keys will be omitted.
+	 *                   <p>
+	 *                   <li>iRandomSampleSubsetSize [integer] = Number of randomly chosen samples to use. Useful for analyzing large data tables quickly.
+	 *                   <p>
+	 *                   <li>iRandomObservationSubsetSize [integer] = Number of randomly chosen observations to use. Useful for analyzing large data tables quickly.
+	 *                   <p>
+	 *                   <li>bCheckRarefied [boolean] = Flag for whether to check for rarefaction. If enabled and table is not rarefied, error will be thrown.
+	 *                   <p>
+	 *                   <li>bNormalize [boolean] = Flag for whether to normalize within each sample so that entries total to 1.
+	 *                   <p>
+	 *                   <li>iPrevalenceMinimum [integer] = Minimum prevalence: observations that occur in fewer samples will be omitted from analysis.
+	 *                   <p>
+	 *                   <li>bPresenceAbsence [boolean] = Flag for whether data should be reduced to presence-absence data.
+	 *                   <p>
+	 *                   <li>iRarefactionTotal [integer] = Total count to which to rarefy samples.
+	 *                   </ul>
+	 */
+	
 	/**
 	 * Tests for bug in netcdf library
 	 */
@@ -141,45 +182,6 @@ public class BiomIO {
 		close(fil1);
 	}
 	
-	/**
-	 * Constructor that performs specified initial operations on the BIOM table.
-	 * @param sBiomPath Absolute path to BIOM file.
-	 * @param mapOptions Selected options. Key value pairings can include:
-	 *                   <p>
-	 *                   <ul>
-	 *                   <li>sTaxonRank [string] = Taxonomic units on which to collapse table. Accepted values are "kingdom", "phylum", "class", "order", "family", "genus", "species", or "otu." The value of "otu" will cause table to not be modified.
-	 *                   <p>
-	 *                   <li>sSampleMetadataPath [string] = Path to text file containing sample metadata formatted according to http://biom-format.org/documentation/adding_metadata.html. For use if BIOM file does not contain metadata. Must include "id" field giving sample IDs.
-	 *                   <p>
-	 *                   <li>rgsSampleMetadataKeys [list of strings] = Sample metadata keys to load from metadata file. A comma-delimited list.
-	 *                   <p>
-	 *                   <li>sObservationMetadataPath [string] = Path to text file containing observation metadata formatted according to http://biom-format.org/documentation/adding_metadata.html. For use if BIOM file does not contain metadata. Must include "id" field giving observation IDs.
-	 *                   <p>
-	 *                   <li>rgsObservationMetadataKeys [array of strings] = Observations metadata keys to load from metadata file. A comma-delimited list.
-	 *                   <p>
-	 *                   <li>sSamplesToKeepPath [string] = Path to file with list of samples to keep. File should contain a list of sample names.
-	 *                   <p>
-	 *                   <li>sObservationsToKeepPath [string] = Path to file with list of observations to keep. File should contain a list of observation names.
-	 *                   <p>
-	 *                   <li>rgsRequiredObservationMetadata [array of strings] = Comma-delimited list of observation metadata keys. Samples lacking data for one or more of these keys will be omitted.
-	 *                   <p>
-	 *                   <li>rgsRequiredSampleMetadata [list of strings] = Comma-delimited list of sample metadata keys. Samples lacking data for one or more of these keys will be omitted.
-	 *                   <p>
-	 *                   <li>iRandomSampleSubsetSize [integer] = Number of randomly chosen samples to use. Useful for analyzing large data tables quickly.
-	 *                   <p>
-	 *                   <li>iRandomObservationSubsetSize [integer] = Number of randomly chosen observations to use. Useful for analyzing large data tables quickly.
-	 *                   <p>
-	 *                   <li>bCheckRarefied [boolean] = Flag for whether to check for rarefaction. If enabled and table is not rarefied, error will be thrown.
-	 *                   <p>
-	 *                   <li>bNormalize [boolean] = Flag for whether to normalize within each sample so that entries total to 1.
-	 *                   <p>
-	 *                   <li>iPrevalenceMinimum [integer] = Minimum prevalence: observations that occur in fewer samples will be omitted from analysis.
-	 *                   <p>
-	 *                   <li>bPresenceAbsence [boolean] = Flag for whether data should be reduced to presence-absence data.
-	 *                   <p>
-	 *                   <li>iRarefactionTotal [integer] = Total count to which to rarefy samples.
-	 *                   </ul>
-	 */
 	public BiomIO(String sBiomPath, Map<String,String> mapOptions) throws Exception{
 		
 		//running constructor
@@ -295,6 +297,11 @@ public class BiomIO {
 				d1 = map1.get(s);
 			}else{
 				if(map1.get(s)!=d1){
+					
+					//************************
+					System.out.println(map1.get(s));
+					//************************
+					
 					return false;
 				}
 			}
@@ -1310,6 +1317,10 @@ public class BiomIO {
 		
 		ArrayList<String> lst1;
 		HashSet<String> setKeep;
+		
+		if(iSubsetSize>axs1.size()){
+			return;
+		}
 		
 		if(iSubsetSize>axs1.size()){
 			System.out.println("Cannot take subset of size " + iSubsetSize + " from " + axs1.sName + " axis, which has " + axs1.size() + " elments. Exiting.");

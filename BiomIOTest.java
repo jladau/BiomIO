@@ -680,7 +680,7 @@ public class BiomIOTest {
 		for(String s:bio1.axsSample.getIDs()){
 			assertEquals(0,bio1.axsSample.getMetadata(s).size());
 		}
-		bio1 = new BiomIO(sTestDataDir + "/" + sTestFile);	
+		bio1 = new BiomIO(sTestDataDir + "/" + sTestFile);
 	}
 	
 	@Test

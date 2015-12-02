@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.TreeMap;
 
 import ucar.ma2.Array;
@@ -297,11 +298,6 @@ public class BiomIO {
 				d1 = map1.get(s);
 			}else{
 				if(map1.get(s)!=d1){
-					
-					//************************
-					System.out.println(map1.get(s));
-					//************************
-					
 					return false;
 				}
 			}
@@ -336,6 +332,25 @@ public class BiomIO {
 	    }
 	}
 
+	
+	/**
+	 * Resamples samples axis with replacement. Useful for bootstrapping.
+	 * @param iRandomSeed Random seed to use.
+	 * @return Resampled table. New samples have the same names as original samples with suffixes '.1', '.2', etc.
+	 */
+	public BiomIO resampleWithReplacement(int iRandomSeed){
+		
+		//axsNew = new axis
+		//spmNew = new sampling matrix
+		
+		Axis axsNew;
+		SparseMatrix spmNew;
+		
+		axsNew = axsSample.resampleWithReplacement(iRandomSeed);
+		spmNew = spm1.resample(axsNew.mapResample);
+		return new BiomIO(axsObservation,axsNew,spmNew);
+	}
+	
 	/**
 	 * Collapses table (sums entries) by specified metadata field: axis elements are combined if they share a given metadata value.
 	 * @param sMetadataKey Key to use for metadata collapsing (elements that share the same value of this metadata will be combined).
@@ -1361,8 +1376,11 @@ public class BiomIO {
 		/**Returns the index of the specified object ID.**/
 		private HashMap<String,Integer> mapIndex;
 		
-		/**Returns new index (for axes that have been collapsed; null otherwise).**/
+		/**Returns new ID (for axes that have been collapsed; null otherwise).**/
 		private HashMap<String,String> mapCollapse = null;
+		
+		/**Returns old ID (for axes that have been resampled; null otherwise).**/
+		private HashMap<String,String> mapResample = null;
 		
 		/**Returns the ith object.**/
 		private ArrayList<AxisObject> lstObjects;
@@ -1375,12 +1393,13 @@ public class BiomIO {
 		 * @param setMetadataKeys Metadata keys.
 		 * @param mapCollapse Collapse map.
 		 */
-		private Axis(String sName, HashMap<String,Integer> mapIndex, ArrayList<AxisObject> lstObjects, HashSet<String> setMetadataKeys, HashMap<String,String> mapCollapse){
+		private Axis(String sName, HashMap<String,Integer> mapIndex, ArrayList<AxisObject> lstObjects, HashSet<String> setMetadataKeys, HashMap<String,String> mapCollapse, HashMap<String,String> mapResample){
 			this.sName=sName;
 			this.mapIndex = mapIndex;
 			this.lstObjects = lstObjects;
 			this.setMetadataKeys = setMetadataKeys;
 			this.mapCollapse = mapCollapse;
+			this.mapResample = mapResample;
 		}
 	
 		/**
@@ -1491,9 +1510,64 @@ public class BiomIO {
 				}
 				mapCollapseNew.put(a.sID, sIDNew);
 			}
-			return new Axis(sName, mapIndexNew, lstObjectsNew, setMetadataKeysNew, mapCollapseNew);
+			return new Axis(sName, mapIndexNew, lstObjectsNew, setMetadataKeysNew, mapCollapseNew, null);
 		}
 		
+		/**
+		 * Resamples axis with replacement. Useful for bootstrap resampling
+		 * @param iRandomSeed Random seed.
+		 * @return New axis object with resampled elements.
+		 */
+		private Axis resampleWithReplacement(int iRandomSeed){
+			
+			//lstObjectsNew = new set of objects
+			//mapIndexNew = new index map
+			//mapResampleNew = resampled map
+			//sIDNew = new id
+			//rnd1 = random number generator
+			//i1 = current random index
+			//i2 = current counter
+			//mapIndex(sID) = returns the current index for string
+			//sID = current object ID
+			//axo = current new axis object
+			
+			HashMap<String,Integer> mapIndex;
+			int i2;
+			int i1;
+			Random rnd1;
+			HashMap<String,Integer> mapIndexNew;
+			HashMap<String,String> mapResampleNew;
+			ArrayList<AxisObject> lstObjectsNew;
+			String sID;
+			AxisObject axo1;
+			
+			lstObjectsNew = new ArrayList<AxisObject>(lstObjects.size());
+			mapIndexNew = new HashMap<String,Integer>();
+			rnd1 = new Random(iRandomSeed);
+			mapIndex = new HashMap<String,Integer>();
+			mapResampleNew = new HashMap<String,String>();
+			for(int i=0;i<this.size();i++){
+				
+				i1 = rnd1.nextInt(this.size());
+				sID = lstObjects.get(i1).sID;
+				if(!mapIndex.containsKey(sID)){
+					mapIndex.put(sID, 1);
+				}
+				i2 = mapIndex.get(sID);
+				i2++;
+				mapIndex.put(sID, i2);
+				sID = sID + "." + (mapIndex.get(sID)-1);
+				axo1 = new AxisObject(sID);
+				for(String s:lstObjects.get(i1).getAllMetadata().keySet()){
+					axo1.addMetadata(s, lstObjects.get(i1).getAllMetadata().get(s));
+				}
+				lstObjectsNew.add(axo1);
+				mapResampleNew.put(sID, lstObjects.get(i1).sID);
+				mapIndexNew.put(sID, i);
+			}
+			return new Axis(sName, mapIndexNew, lstObjectsNew, setMetadataKeys, null, mapResampleNew);
+		}
+
 		/**
 		 * Filters axis elements.
 		 * @param setIDsToKeep Set of IDs of axis elements to keep.
@@ -1564,7 +1638,7 @@ public class BiomIO {
 		 * @return Map in which keys are metadata headings, values are metadata values.
 		 */
 		public HashMap<String,String> getMetadata(int iIndex){
-			return lstObjects.get(iIndex).getAllMetdata();
+			return lstObjects.get(iIndex).getAllMetadata();
 		}
 		
 		/**
@@ -1573,7 +1647,7 @@ public class BiomIO {
 		 * @return Map in which keys are metadata headings, values are metadata values.
 		 */
 		public HashMap<String,String> getMetadata(String sID){
-			return lstObjects.get(mapIndex.get(sID)).getAllMetdata();
+			return lstObjects.get(mapIndex.get(sID)).getAllMetadata();
 		}
 		
 		/**
@@ -1711,7 +1785,7 @@ public class BiomIO {
 		 * Gets all metadata.
 		 * @return Map between all metadata fields and values.
 		 */
-		private HashMap<String,String> getAllMetdata(){
+		private HashMap<String,String> getAllMetadata(){
 			return mapMetadata;
 		}
 		
@@ -1872,6 +1946,29 @@ public class BiomIO {
 					}
 					d1+=mapValue.get(s).get(t);
 					mapOut.get(sRowIDNew).put(sColIDNew,d1);
+				}
+			}
+			return new SparseMatrix(mapOut);
+		}
+		
+		/**
+		 * Resamples matrix.
+		 * @param mapResample Map from new sample IDs to old sample IDs.
+		 * @return Sparse matrix object with resampled columns.
+		 */
+		private SparseMatrix resample(HashMap<String,String> mapResample){
+			
+			//mapOut = output value map
+			
+			HashMap<String,HashMap<String,Double>> mapOut;
+			
+			mapOut = new HashMap<String,HashMap<String,Double>>();
+			for(String s:mapValue.keySet()){
+				mapOut.put(s, new HashMap<String,Double>());
+				for(String t:mapResample.keySet()){
+					if(mapValue.get(s).containsKey(mapResample.get(t))){
+						mapOut.get(s).put(t, mapValue.get(s).get(mapResample.get(t)));
+					}
 				}
 			}
 			return new SparseMatrix(mapOut);

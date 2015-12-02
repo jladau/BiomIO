@@ -57,6 +57,22 @@ public class BiomIOTest {
 	}
 	
 	@Test
+	public void resampleWithReplacement_TableIsResampled_TableIsCorrect(){
+		
+		bio1 = bio1.resampleWithReplacement(1234);
+		rgsCorrectSampleIDs=new String[]{"Sample3.1","Sample6.1","Sample6.2","Sample1.1","Sample3.2","Sample4.1"};
+		rgsCorrectObservationIDs=new String[]{"GG_OTU_1","GG_OTU_2","GG_OTU_3","GG_OTU_4","GG_OTU_5"};
+		rgdCorrectData = new double[][]{
+				{1,0,0,0,1,0},
+				{0,1,1,5,0,2},
+				{1,2,2,0,1,4},
+				{1,1,1,2,1,0},
+				{1,0,0,0,1,0}};
+		this.checkTableIsCorrect();
+		bio1 = new BiomIO(sTestDataDir + "/" + sTestFile);
+	}
+	
+	@Test
 	public void collapse_TableIsCollapsedByTaxon_TableIsCorrect(){
 		
 		bio1.collapse("kingdom", bio1.axsObservation, false);

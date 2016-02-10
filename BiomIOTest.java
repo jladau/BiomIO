@@ -43,7 +43,7 @@ public class BiomIOTest {
 	@Test
 	public void checkRarefied_TableIsRarefied_ReturnsTrue(){
 		try {
-			bio1.rarefy(3);
+			bio1.rarefy(3, 1234);
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}
@@ -59,7 +59,7 @@ public class BiomIOTest {
 	@Test
 	public void resampleWithReplacement_TableIsResampled_TableIsCorrect(){
 		
-		bio1 = bio1.resampleWithReplacement(1234);
+		bio1.resampleWithReplacement(1234);
 		rgsCorrectSampleIDs=new String[]{"Sample3.1","Sample6.1","Sample6.2","Sample1.1","Sample3.2","Sample4.1"};
 		rgsCorrectObservationIDs=new String[]{"GG_OTU_1","GG_OTU_2","GG_OTU_3","GG_OTU_4","GG_OTU_5"};
 		rgdCorrectData = new double[][]{
@@ -510,7 +510,7 @@ public class BiomIOTest {
 		HashMap<String,Double> mapSum;
 		
 		try {
-			bio1.rarefy(5);
+			bio1.rarefy(5,1234);
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}
@@ -531,7 +531,7 @@ public class BiomIOTest {
 		HashMap<String,Double> mapSum;
 		
 		try {
-			bio1.subsample(6, bio1.axsObservation);
+			bio1.subsample(6, 1234, bio1.axsObservation);
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}
@@ -578,14 +578,14 @@ public class BiomIOTest {
 	public void takeRandomSubset_SubsetIsTaken_TableHasCorrectSize(){
 		
 		try {
-			bio1.takeRandomSubset(3, bio1.axsObservation);
+			bio1.takeRandomSubset(3, 1234, bio1.axsObservation);
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}
 		assertEquals(3,bio1.axsObservation.size());
 		bio1 = new BiomIO(sTestDataDir + "/" + sTestFile);
 		try {
-			bio1.takeRandomSubset(4, bio1.axsObservation);
+			bio1.takeRandomSubset(4, 1234, bio1.axsObservation);
 		} catch (Exception e) {
 			fail(e.getMessage());
 		}

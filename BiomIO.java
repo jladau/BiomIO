@@ -82,6 +82,8 @@ public class BiomIO {
 	 *                   <p>
 	 *                   <li>iRandomSampleSubsetSize [integer] = Number of randomly chosen samples to use. Useful for analyzing large data tables quickly.
 	 *                   <p>
+	 *                   <li>iRandomSubsetSeed [integer] = Random seed for taking random subset of samples or observations.
+	 *                   <p>
 	 *                   <li>iRandomObservationSubsetSize [integer] = Number of randomly chosen observations to use. Useful for analyzing large data tables quickly.
 	 *                   <p>
 	 *                   <li>bCheckRarefied [boolean] = Flag for whether to check for rarefaction. If enabled and table is not rarefied, error will be thrown.
@@ -218,7 +220,7 @@ public class BiomIO {
 		//rarefying
 		if(mapOptions.containsKey("iRarefactionTotal")){
 			System.out.println("Rarefying...");
-			this.rarefy(Integer.parseInt(mapOptions.get("iRarefactionTotal")));
+			this.rarefy(Integer.parseInt(mapOptions.get("iRarefactionTotal")),1234);
 		}
 		
 		//checking for rarefaction
@@ -249,9 +251,11 @@ public class BiomIO {
 		}
 		
 		//loading random subset of samples
-		if(mapOptions.containsKey("iRandomSampleSubsetSize")){
-			System.out.println("Taking random subset of samples...");
-			takeRandomSubset(Integer.parseInt(mapOptions.get("iRandomSampleSubsetSize")), axsSample);			
+		if(mapOptions.containsKey("iRandomSampleSubsetSize") && Integer.parseInt(mapOptions.get("iRandomSampleSubsetSize"))!=-9999){
+			if(mapOptions.containsKey("iRandomSubsetSeed") && Integer.parseInt(mapOptions.get("iRandomSubsetSeed"))!=-9999){
+				System.out.println("Taking random subset of samples...");
+				takeRandomSubset(Integer.parseInt(mapOptions.get("iRandomSampleSubsetSize")), Integer.parseInt(mapOptions.get("iRandomSubsetSeed")), axsSample);
+			}
 		}
 		
 		//normalizing to relative abundance
@@ -267,15 +271,23 @@ public class BiomIO {
 		}
 
 		//loading random subset of observations
-		if(mapOptions.containsKey("iRandomObservationSubsetSize")){
-			System.out.println("Taking random subset of observations...");
-			takeRandomSubset(Integer.parseInt(mapOptions.get("iRandomObservationSubsetSize")), axsObservation);
+		if(mapOptions.containsKey("iRandomObservationSubsetSize") && Integer.parseInt(mapOptions.get("iRandomObservationSubsetSize"))!=-9999){
+			if(mapOptions.containsKey("iRandomSubsetSeed") && Integer.parseInt(mapOptions.get("iRandomSubsetSeed"))!=-9999){
+				System.out.println("Taking random subset of observations...");
+				takeRandomSubset(Integer.parseInt(mapOptions.get("iRandomObservationSubsetSize")), Integer.parseInt(mapOptions.get("iRandomSubsetSeed")), axsObservation);
+			}
 		}
 			
 		//reducing to presence-absence
 		if(mapOptions.containsKey("bPresenceAbsence") && Boolean.parseBoolean(mapOptions.get("bPresenceAbsence"))){
 			System.out.println("Converting table to presence-absence data...");
 			convertToPresenceAbsence();
+		}
+		
+		//bootstrap resampling
+		if(mapOptions.containsKey("iBootstrapRandomSeed") && Integer.parseInt(mapOptions.get("iBootstrapRandomSeed"))!=-9999){
+			System.out.println("Resampling with replacement...");
+			resampleWithReplacement(Integer.parseInt(mapOptions.get("iBootstrapRandomSeed")));
 		}
 	}
 	
@@ -332,25 +344,6 @@ public class BiomIO {
 	    }
 	}
 
-	
-	/**
-	 * Resamples samples axis with replacement. Useful for bootstrapping.
-	 * @param iRandomSeed Random seed to use.
-	 * @return Resampled table. New samples have the same names as original samples with suffixes '.1', '.2', etc.
-	 */
-	public BiomIO resampleWithReplacement(int iRandomSeed){
-		
-		//axsNew = new axis
-		//spmNew = new sampling matrix
-		
-		Axis axsNew;
-		SparseMatrix spmNew;
-		
-		axsNew = axsSample.resampleWithReplacement(iRandomSeed);
-		spmNew = spm1.resample(axsNew.mapResample);
-		return new BiomIO(axsObservation,axsNew,spmNew);
-	}
-	
 	/**
 	 * Collapses table (sums entries) by specified metadata field: axis elements are combined if they share a given metadata value.
 	 * @param sMetadataKey Key to use for metadata collapsing (elements that share the same value of this metadata will be combined).
@@ -1145,9 +1138,10 @@ public class BiomIO {
 	/**
 	 * Rarefies samples to specified total.
 	 * @param iTotal Total to rarefy to.
+	 * @param iRandomSeed Random seed for rarefaction.
 	 */
-	public void rarefy(int iTotal) throws Exception{
-		this.subsample(iTotal, axsSample);
+	public void rarefy(int iTotal, int iRandomSeed) throws Exception{
+		this.subsample(iTotal, iRandomSeed, axsSample);
 	}
 	
 	/**
@@ -1155,9 +1149,10 @@ public class BiomIO {
 	 * @param iTotal Total to which to rarefy.
 	 * @param iVectorTotal Total observations in vector.
 	 * @param mapVector Map in which keys are cumulative counts, values are axis element (sample or observation) IDs.
+	 * @param iRandomSeed Random seed to use for resampling.
 	 * @return Map in which keys are axis element IDs (i.e., sample or observation IDs), values are frequencies.
 	 */
-	private HashMap<String,Integer> rarefyVector(int iTotal, TreeMap<Integer,String> mapVector, int iVectorTotal){
+	private HashMap<String,Integer> rarefyVector(int iTotal, TreeMap<Integer,String> mapVector, int iVectorTotal, int iRandomSeed){
 		
 		//i2 = current count
 		//set1 = contains indices for selected values
@@ -1175,7 +1170,7 @@ public class BiomIO {
 		}
 		
 		//getting rarefied indices
-		set1 = sampleWithoutReplacement(iTotal,iVectorTotal);
+		set1 = sampleWithoutReplacement(iTotal,iVectorTotal, iRandomSeed);
 		
 		//initializing output
 		mapOut = new HashMap<String,Integer>(mapVector.size());
@@ -1195,18 +1190,63 @@ public class BiomIO {
 	}
 	
 	/**
+	 * Resamples samples axis with replacement. Useful for bootstrapping.
+	 * @param iRandomSeed Random seed to use.
+	 * @return Map indicating whether each sample was included or excluded
+	 */
+	//TODO update unit test to check output map
+	public HashMap<String,String> resampleWithReplacement(int iRandomSeed){
+		
+		//mapOut = output. Keys are sample IDs, values indicate whether sample was included or excluded.
+		
+		HashMap<String,String> mapOut;
+		
+		mapOut = new HashMap<String,String>();
+		for(String s:axsSample.getIDs()){
+			mapOut.put(s, "excluded");
+		}
+		axsSample = axsSample.resampleWithReplacement(iRandomSeed);
+		spm1 = spm1.resample(axsSample.mapResample);
+		for(String s:axsSample.getIDs()){
+			mapOut.put(s, "included");
+		}
+		return mapOut;
+	}
+	
+	/**
+	 * Resamples samples axis with replacement. Useful for bootstrapping.
+	 * @param iRandomSeed Random seed to use.
+	 * @return Resampled table. New samples have the same names as original samples with suffixes '.1', '.2', etc.
+	 */
+	@Deprecated
+	public BiomIO resampleWithReplacement0(int iRandomSeed){
+		
+		//axsNew = new axis
+		//spmNew = new sampling matrix
+		
+		Axis axsNew;
+		SparseMatrix spmNew;
+		
+		axsNew = axsSample.resampleWithReplacement(iRandomSeed);
+		spmNew = spm1.resample(axsNew.mapResample);
+		return new BiomIO(axsObservation,axsNew,spmNew);
+	}
+
+	/**
 	 * Samples without replacement from the set 0,1,...,n.
 	 * @param iSampleSize Total number of elements to sample.
 	 * @param iPopulationSize Total number of elements from which to sample.
+	 * @param iRandomSeed Random seed to use.
 	 * @return A set of integers giving the subsample.
 	 */
-	private HashSet<Integer> sampleWithoutReplacement(int iSampleSize, int iPopulationSize){
+	private HashSet<Integer> sampleWithoutReplacement(int iSampleSize, int iPopulationSize, int iRandomSeed){
 		
 		//setOut = output
 		//n, N = Knuth's variable names
 		//t = total input records dealt with
 		//m = number of items selected so far
 		//u = random number 
+		//rnd1 = random number generator
 		
 		HashSet<Integer> setOut;
 		int n;
@@ -1214,13 +1254,14 @@ public class BiomIO {
 	    int t = 0; 
 	    int m = 0; 
 	    double u;
-
+	    Random rnd1;
+	    
 	    setOut = new HashSet<Integer>(iSampleSize);
 	    n = iSampleSize;
 	    N = iPopulationSize;
-	    
+	    rnd1 = new Random(iRandomSeed);
 	    while (m < n){
-	        u = Math.random(); // call a uniform(0,1) random number generator
+	        u = rnd1.nextDouble(); // call a uniform(0,1) random number generator
 	        if( (N - t)*u >= n - m ){
 	            t++;
 	        }else{
@@ -1236,8 +1277,9 @@ public class BiomIO {
 	 * Randomly subsample (rarefy) without replacement.
 	 * @param iTotal Total for each subsampling.
 	 * @param axs1 Axis along which to subsample.
+	 * @param iRandomSeed Random seed for resampling.
 	*/
-	public void subsample(int iTotal, Axis axs1) throws Exception{
+	public void subsample(int iTotal, int iRandomSeed, Axis axs1) throws Exception{
 		
 		//map1 = current vector of data
 		//map2 = current cumulative vector of data
@@ -1245,15 +1287,18 @@ public class BiomIO {
 		//i1 = current cumulant
 		//setKeep = set of rows or columns to keep
 		//dValue = value being input
+		//iRandomSeedCur = current random seed
 
 		TreeMap<Integer,String> map2;
 		HashMap<String,Double> map1;
 		HashMap<String,Integer> map3;
 		int i1;
+		int iRandomSeedCur;
 		HashSet<String> setKeep;
 		double dValue;
 		
 		setKeep = new HashSet<String>(axs1.size());
+		iRandomSeedCur=iRandomSeed;
 		for(AxisObject a:axs1.getObjects()){
 			
 			//loading vectors
@@ -1268,7 +1313,8 @@ public class BiomIO {
 			}
 			
 			//rarefying vector
-			map3 = rarefyVector(iTotal,map2,i1);
+			iRandomSeedCur+=10;
+			map3 = rarefyVector(iTotal,map2,i1,iRandomSeedCur);
 			
 			//rarefaction not possible
 			if(map3!=null){
@@ -1324,17 +1370,32 @@ public class BiomIO {
 	 * Keeps random subset of elements from axis. Other elements are removed.
 	 * @param iSubsetSize Number of elements to keep.
 	 * @param axs1 Axis to consider.
+	 * @param iRandomSeed Random seed to use.
+	 * @return Map indicating whether each sample was included or excluded
 	 */
-	public void takeRandomSubset(int iSubsetSize, Axis axs1) throws Exception{
+	//TODO update unit test for map output.
+	public HashMap<String,String> takeRandomSubset(int iSubsetSize, int iRandomSeed, Axis axs1) throws Exception{
 		
 		//lst1 = axis ids in randomized order
 		//setKeep = set of elements to keep
+		//rnd1 = random number generator
+		//mapOut = output. Keys are sample IDs, values indicate whether sample was included or excluded.
 		
+		HashMap<String,String> mapOut;		
 		ArrayList<String> lst1;
 		HashSet<String> setKeep;
+		Random rnd1;
+		
+		mapOut = new HashMap<String,String>();
+		for(String s:axs1.getIDs()){
+			mapOut.put(s, "excluded");
+		}
 		
 		if(iSubsetSize>axs1.size()){
-			return;
+			for(String s:axs1.getIDs()){
+				mapOut.put(s, "included");
+			}
+			return mapOut;
 		}
 		
 		if(iSubsetSize>axs1.size()){
@@ -1348,12 +1409,18 @@ public class BiomIO {
 				lst1.add(axs1.getID(i));
 			}
 		}
-		Collections.shuffle(lst1);
+		rnd1 = new Random(iRandomSeed);
+		Collections.shuffle(lst1,rnd1);
 		setKeep = new HashSet<String>(iSubsetSize);
 		for(int i=0;i<iSubsetSize;i++){
 			setKeep.add(lst1.get(i));
 		}
 		this.filter(setKeep, axs1);
+		
+		for(String s:setKeep){
+			mapOut.put(s, "included");
+		}
+		return mapOut;
 	}
 
 	/**
